@@ -2,6 +2,7 @@
 
 test0803
 尝试连接数据库部署
+0804更新变量和名称
 
 <div align="center">
   <img src="public/logo.png" alt="LibreTV Logo" width="120">
