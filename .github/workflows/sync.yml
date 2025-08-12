@@ -21,14 +21,29 @@ jobs:
         uses: actions/checkout@v4
 
       # Step 2: run the sync action
-      - name: Sync upstream changes
-        id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
-        with:
-          upstream_sync_repo: LunaTechLab/MoonTV
-          upstream_sync_branch: main
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.PAT_TOKEN }}
+      # 用 PAT 给 origin 设置推送权限（PAT_TOKEN 无需 workflow scope，因为我们不会改 workflows）
+      - name: Configure git auth
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
+
+      # 合并上游，然后丢弃 .github/workflows 的变更再提交推送
+      - name: Sync from upstream excluding workflows
+        run: |
+          set -e
+          git fetch https://github.com/LunaTechLab/MoonTV.git main
+          # 建立合并，但先不提交
+          git merge --no-ff --no-commit FETCH_HEAD || true
+          # 丢弃工作流文件的变更（工作区和暂存区都恢复到当前分支的版本）
+          git restore --worktree --staged .github/workflows || true
+          # 若还有其它变更则提交并推送；没有则跳过
+          if ! git diff --quiet --staged; then
+            git commit -m "Sync upstream (exclude .github/workflows)"
+            git push origin HEAD:main
+          else
+            echo "No changes to push (only workflows changed or nothing changed)."
+          fi
 
       - name: Sync check
         if: failure()
