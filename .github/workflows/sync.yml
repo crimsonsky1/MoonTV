@@ -7,7 +7,8 @@ on:
 
 permissions:
   contents: write
-  actions: write
+
+concurrency: upstream-sync
 
 jobs:
   sync_latest_from_upstream:
@@ -32,8 +33,9 @@ jobs:
       - name: Sync from upstream excluding workflows
         run: |
           set -e
-          git fetch upstream main --tags --prune --depth=0
+          git fetch upstream main --tags --prune
           git merge --no-ff --no-commit upstream/main || true
+          # 如果 merge 没有带来任何变更，这里不会有暂存内容；下面会检测并跳过提交
           git restore --worktree --staged .github/workflows || true
           if ! git diff --quiet --staged; then
             git commit -m "Sync upstream (exclude .github/workflows)"
